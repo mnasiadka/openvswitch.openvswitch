@@ -86,6 +86,12 @@ test_name_side_effect_matrix = {
         (0, "openvswitch_db_disable_in_band_true.cfg", None),
         (0, None, None),
     ],
+    "test_openvswitch_db_absent_removes_key_check_mode": [
+        (0, "openvswitch_db_disable_in_band_true.cfg", None),
+    ],
+    "test_openvswitch_db_present_adds_key_check_mode": [
+        (0, "openvswitch_db_disable_in_band_missing.cfg", None),
+    ],
 }
 
 
@@ -309,6 +315,116 @@ class TestOpenVSwitchDBModule(TestOpenVSwitchModule):
             changed=True,
             commands=["/usr/bin/ovs-vsctl -t 5 get Bridge test-br other_config"],
             test_name="test_openvswitch_db_get_without_key",
+        )
+
+    def test_openvswitch_db_absent_removes_key_check_mode(self):
+        set_module_args(
+            dict(
+                state="absent",
+                table="Bridge",
+                record="test-br",
+                col="other_config",
+                key="disable-in-band",
+                value="true",
+                _ansible_check_mode=True,
+            )
+        )
+        self.execute_module(
+            changed=True,
+            commands=[
+                "/usr/bin/ovs-vsctl -t 5 remove Bridge test-br other_config disable-in-band=true"
+            ],
+            test_name="test_openvswitch_db_absent_removes_key_check_mode",
+        )
+
+    def test_openvswitch_db_present_adds_key_check_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                table="Bridge",
+                record="test-br",
+                col="other_config",
+                key="disable-in-band",
+                value="true",
+                _ansible_check_mode=True,
+            )
+        )
+        self.execute_module(
+            changed=True,
+            commands=[
+                "/usr/bin/ovs-vsctl -t 5 set Bridge test-br other_config:disable-in-band=true"
+            ],
+            test_name="test_openvswitch_db_present_adds_key_check_mode",
+        )
+
+    def test_openvswitch_db_present_adds_key_diff_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                table="Bridge",
+                record="test-br",
+                col="other_config",
+                key="disable-in-band",
+                value="true",
+                _ansible_diff=True,
+            )
+        )
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_db_present_adds_key",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(
+            result["diff"]["before"],
+            {"table": "Bridge", "record": "test-br", "col": "other_config"},
+        )
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "table": "Bridge",
+                "record": "test-br",
+                "col": "other_config",
+                "key": "disable-in-band",
+                "value": "true",
+            },
+        )
+
+    def test_openvswitch_db_absent_removes_key_diff_mode(self):
+        set_module_args(
+            dict(
+                state="absent",
+                table="Bridge",
+                record="test-br",
+                col="other_config",
+                key="disable-in-band",
+                value="true",
+                _ansible_diff=True,
+            )
+        )
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_db_absent_removes_key",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(
+            result["diff"]["before"],
+            {
+                "table": "Bridge",
+                "record": "test-br",
+                "col": "other_config",
+                "key": "disable-in-band",
+                "value": "true",
+            },
+        )
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "table": "Bridge",
+                "record": "test-br",
+                "col": "other_config",
+                "key": "disable-in-band",
+                "value": "true",
+            },
         )
 
     def test_openvswitch_db_get_non_dict(self):

@@ -289,23 +289,27 @@ def main():
     result["commands"] = commands
 
     if commands:
+        if module._diff:
+            result["diff"] = {"before": have, "after": want}
+        out = None
         if not module.check_mode:
             for c in commands:
                 rc, out, err = module.run_command(c, check_rc=True)
         result["changed"] = True
 
-        string_to_dict = {}
+        if out is not None:
+            string_to_dict = {}
 
-        if NON_EMPTY_MAP_RE.match(str(out)):
-            for kv in re.split(r", ", out[1:-1]):
-                k, v = re.split(r"=", kv, 1)
-                string_to_dict[re.search("\\w*", k).group(0)] = re.search("\\d*", v).group(0)
-        else:
-            if module.params["key"] is not None:
-                string_to_dict[module.params["key"]] = re.search("\\w*", str(out)).group(0)
+            if NON_EMPTY_MAP_RE.match(str(out)):
+                for kv in re.split(r", ", out[1:-1]):
+                    k, v = re.split(r"=", kv, 1)
+                    string_to_dict[re.search("\\w*", k).group(0)] = re.search("\\d*", v).group(0)
             else:
-                string_to_dict[module.params["col"]] = re.search("\\w*", str(out)).group(0)
-        result["output"] = string_to_dict
+                if module.params["key"] is not None:
+                    string_to_dict[module.params["key"]] = re.search("\\w*", str(out)).group(0)
+                else:
+                    string_to_dict[module.params["col"]] = re.search("\\w*", str(out)).group(0)
+            result["output"] = string_to_dict
 
     module.exit_json(**result)
 

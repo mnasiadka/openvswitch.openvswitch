@@ -57,6 +57,14 @@ test_name_side_effect_matrix = {
         (0, "", ""),
         (0, "", ""),
     ],
+    "test_openvswitch_bond_absent_removes_bond_check_mode": [
+        (0, "list_ports_bond_br.cfg", ""),
+        (0, "get_port_bond0_other_config.cfg", ""),
+        (0, "get_port_bond0_external_ids.cfg", ""),
+    ],
+    "test_openvswitch_bond_present_creates_bond_check_mode": [
+        (0, "", ""),
+    ],
 }
 
 
@@ -151,6 +159,106 @@ class TestOpenVSwitchBondModule(TestOpenVSwitchModule):
             changed=True,
             commands=commands,
             test_name="test_openvswitch_bond_present_creates_bond",
+        )
+
+    def test_openvswitch_bond_absent_removes_bond_check_mode(self):
+        set_module_args(dict(state="absent", bridge="bond-br", port="bond0", _ansible_check_mode=True))
+        commands = ["/usr/bin/ovs-vsctl -t 5 del-port bond-br bond0"]
+        self.execute_module(
+            changed=True,
+            commands=commands,
+            test_name="test_openvswitch_bond_absent_removes_bond_check_mode",
+        )
+
+    def test_openvswitch_bond_present_creates_bond_check_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                bridge="bond-br",
+                port="bond0",
+                bond_updelay=100,
+                bond_downdelay=100,
+                interfaces=["eth3", "eth4"],
+                other_config={"bond-detect-mode": "miimon"},
+                _ansible_check_mode=True,
+            )
+        )
+        commands = [
+            "/usr/bin/ovs-vsctl -t 5 add-bond bond-br bond0 eth3 eth4"
+            + " bond_updelay=100 bond_downdelay=100",
+            "/usr/bin/ovs-vsctl -t 5 set port bond0 other_config:bond-detect-mode=miimon",
+        ]
+        self.execute_module(
+            changed=True,
+            commands=commands,
+            test_name="test_openvswitch_bond_present_creates_bond_check_mode",
+        )
+
+    def test_openvswitch_bond_present_creates_bond_diff_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                bridge="bond-br",
+                port="bond0",
+                bond_updelay=100,
+                bond_downdelay=100,
+                interfaces=["eth3", "eth4"],
+                other_config={"bond-detect-mode": "miimon"},
+                _ansible_diff=True,
+            )
+        )
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_bond_present_creates_bond",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(result["diff"]["before"], {})
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "bridge": "bond-br",
+                "port": "bond0",
+                "interfaces": ["eth3", "eth4"],
+                "bond_mode": None,
+                "lacp": None,
+                "bond_updelay": 100,
+                "bond_downdelay": 100,
+                "external_ids": {},
+                "other_config": {"bond-detect-mode": "miimon"},
+                "set": None,
+            },
+        )
+
+    def test_openvswitch_bond_absent_removes_bond_diff_mode(self):
+        set_module_args(dict(state="absent", bridge="bond-br", port="bond0", _ansible_diff=True))
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_bond_absent_removes_bond",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(
+            result["diff"]["before"],
+            {
+                "bridge": "bond-br",
+                "port": "bond0",
+                "other_config": {"bond-detect-mode": "miimon"},
+                "external_ids": {"foo": "bar"},
+            },
+        )
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "bridge": "bond-br",
+                "port": "bond0",
+                "interfaces": None,
+                "bond_mode": None,
+                "lacp": None,
+                "bond_updelay": None,
+                "bond_downdelay": None,
+                "external_ids": {},
+                "other_config": {},
+                "set": None,
+            },
         )
 
     def test_openvswitch_bond_present_creates_lacp_bond(self):

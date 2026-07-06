@@ -268,6 +268,8 @@ def main():
     result["commands"] = commands
 
     if commands:
+        if module._diff:
+            result["diff"] = {"before": have, "after": want}
         if not module.check_mode:
             for c in commands:
                 module.run_command(c, check_rc=True)

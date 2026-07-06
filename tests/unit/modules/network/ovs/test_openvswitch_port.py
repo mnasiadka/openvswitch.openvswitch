@@ -75,6 +75,14 @@ test_name_side_effect_matrix = {
         (0, "", ""),
         (0, "", ""),
     ],
+    "test_openvswitch_port_absent_removes_port_check_mode": [
+        (0, "list_ports_test_br.cfg", ""),
+        (0, "get_port_eth2_tag.cfg", ""),
+        (0, "get_port_eth2_external_ids.cfg", ""),
+    ],
+    "test_openvswitch_port_present_creates_port_check_mode": [
+        (0, "", ""),
+    ],
 }
 
 
@@ -265,6 +273,91 @@ class TestOpenVSwitchPortModule(TestOpenVSwitchModule):
             changed=True,
             commands=commands,
             test_name="test_openvswitch_port_present_runs_set_mode",
+        )
+
+    def test_openvswitch_port_absent_removes_port_check_mode(self):
+        set_module_args(dict(state="absent", bridge="test-br", port="eth2", _ansible_check_mode=True))
+        commands = ["/usr/bin/ovs-vsctl -t 5 del-port test-br eth2"]
+        self.execute_module(
+            changed=True,
+            commands=commands,
+            test_name="test_openvswitch_port_absent_removes_port_check_mode",
+        )
+
+    def test_openvswitch_port_present_creates_port_check_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                bridge="test-br",
+                port="eth2",
+                tag=10,
+                external_ids={"foo": "bar"},
+                _ansible_check_mode=True,
+            )
+        )
+        commands = [
+            "/usr/bin/ovs-vsctl -t 5 add-port test-br eth2 tag=10",
+            "/usr/bin/ovs-vsctl -t 5 set port eth2 external_ids:foo=bar",
+        ]
+        self.execute_module(
+            changed=True,
+            commands=commands,
+            test_name="test_openvswitch_port_present_creates_port_check_mode",
+        )
+
+    def test_openvswitch_port_present_creates_port_diff_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                bridge="test-br",
+                port="eth2",
+                tag=10,
+                external_ids={"foo": "bar"},
+                _ansible_diff=True,
+            )
+        )
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_port_present_creates_port",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(result["diff"]["before"], {})
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "bridge": "test-br",
+                "port": "eth2",
+                "tag": "10",
+                "external_ids": {"foo": "bar"},
+                "set": None,
+            },
+        )
+
+    def test_openvswitch_port_absent_removes_port_diff_mode(self):
+        set_module_args(dict(state="absent", bridge="test-br", port="eth2", _ansible_diff=True))
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_port_absent_removes_port",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(
+            result["diff"]["before"],
+            {
+                "bridge": "test-br",
+                "port": "eth2",
+                "tag": "10",
+                "external_ids": {"foo": "bar"},
+            },
+        )
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "bridge": "test-br",
+                "port": "eth2",
+                "tag": None,
+                "external_ids": {},
+                "set": None,
+            },
         )
 
     def test_openvswitch_database_socket(self):
