@@ -276,7 +276,9 @@ class TestOpenVSwitchPortModule(TestOpenVSwitchModule):
         )
 
     def test_openvswitch_port_absent_removes_port_check_mode(self):
-        set_module_args(dict(state="absent", bridge="test-br", port="eth2", _ansible_check_mode=True))
+        set_module_args(
+            dict(state="absent", bridge="test-br", port="eth2", _ansible_check_mode=True)
+        )
         commands = ["/usr/bin/ovs-vsctl -t 5 del-port test-br eth2"]
         self.execute_module(
             changed=True,

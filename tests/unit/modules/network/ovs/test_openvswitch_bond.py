@@ -162,7 +162,9 @@ class TestOpenVSwitchBondModule(TestOpenVSwitchModule):
         )
 
     def test_openvswitch_bond_absent_removes_bond_check_mode(self):
-        set_module_args(dict(state="absent", bridge="bond-br", port="bond0", _ansible_check_mode=True))
+        set_module_args(
+            dict(state="absent", bridge="bond-br", port="bond0", _ansible_check_mode=True)
+        )
         commands = ["/usr/bin/ovs-vsctl -t 5 del-port bond-br bond0"]
         self.execute_module(
             changed=True,
