@@ -128,6 +128,13 @@ test_name_side_effect_matrix = {
         (0, "br_get_external_id_foo_bar.cfg", ""),
         (0, "", ""),
     ],
+    "test_openvswitch_bridge_present_idempotent_no_fail_mode": [
+        (0, "list_br_test_br.cfg", ""),
+        (0, "br_to_parent_test_br.cfg", ""),
+        (0, "br_to_vlan_zero.cfg", ""),
+        (0, "get_fail_mode_standalone.cfg", ""),
+        (0, "br_get_external_id_foo_bar.cfg", ""),
+    ],
 }
 
 
@@ -373,6 +380,10 @@ class TestOpenVSwitchBridgeModule(TestOpenVSwitchModule):
                 "set": None,
             },
         )
+
+    def test_openvswitch_bridge_present_idempotent_no_fail_mode(self):
+        set_module_args(dict(state="present", bridge="test-br"))
+        self.execute_module(test_name="test_openvswitch_bridge_present_idempotent_no_fail_mode")
 
     def test_openvswitch_bridge_absent_removes_bridge_diff_mode(self):
         set_module_args(dict(state="absent", bridge="test-br", _ansible_diff=True))
