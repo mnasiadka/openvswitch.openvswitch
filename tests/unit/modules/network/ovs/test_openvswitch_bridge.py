@@ -110,6 +110,24 @@ test_name_side_effect_matrix = {
         (0, "", ""),
         (0, "", ""),
     ],
+    "test_openvswitch_bridge_absent_removes_bridge_check_mode": [
+        (0, "list_br_test_br.cfg", ""),
+        (0, "br_to_parent_test_br.cfg", ""),
+        (0, "br_to_vlan_zero.cfg", ""),
+        (0, "get_fail_mode_secure.cfg", ""),
+        (0, "br_get_external_id_foo_bar.cfg", ""),
+    ],
+    "test_openvswitch_bridge_present_creates_bridge_check_mode": [
+        (0, "", ""),
+    ],
+    "test_openvswitch_bridge_absent_removes_bridge_diff_mode": [
+        (0, "list_br_test_br.cfg", ""),
+        (0, "br_to_parent_test_br.cfg", ""),
+        (0, "br_to_vlan_zero.cfg", ""),
+        (0, "get_fail_mode_secure.cfg", ""),
+        (0, "br_get_external_id_foo_bar.cfg", ""),
+        (0, "", ""),
+    ],
 }
 
 
@@ -296,4 +314,91 @@ class TestOpenVSwitchBridgeModule(TestOpenVSwitchModule):
             changed=True,
             commands=commands,
             test_name="test_openvswitch_bridge_present_runs_set_mode",
+        )
+
+    def test_openvswitch_bridge_absent_removes_bridge_check_mode(self):
+        set_module_args(dict(state="absent", bridge="test-br", _ansible_check_mode=True))
+        commands = ["/usr/bin/ovs-vsctl -t 5 del-br test-br"]
+        self.execute_module(
+            changed=True,
+            commands=commands,
+            test_name="test_openvswitch_bridge_absent_removes_bridge_check_mode",
+        )
+
+    def test_openvswitch_bridge_present_creates_bridge_check_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                bridge="test-br",
+                fail_mode="secure",
+                external_ids={"foo": "bar"},
+                _ansible_check_mode=True,
+            )
+        )
+        commands = [
+            "/usr/bin/ovs-vsctl -t 5 add-br test-br",
+            "/usr/bin/ovs-vsctl -t 5 set-fail-mode test-br secure",
+            "/usr/bin/ovs-vsctl -t 5 br-set-external-id test-br foo bar",
+        ]
+        self.execute_module(
+            changed=True,
+            commands=commands,
+            test_name="test_openvswitch_bridge_present_creates_bridge_check_mode",
+        )
+
+    def test_openvswitch_bridge_present_creates_bridge_diff_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                bridge="test-br",
+                fail_mode="secure",
+                external_ids={"foo": "bar"},
+                _ansible_diff=True,
+            )
+        )
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_bridge_present_creates_bridge",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(result["diff"]["before"], {})
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "bridge": "test-br",
+                "parent": None,
+                "vlan": None,
+                "fail_mode": "secure",
+                "external_ids": {"foo": "bar"},
+                "set": None,
+            },
+        )
+
+    def test_openvswitch_bridge_absent_removes_bridge_diff_mode(self):
+        set_module_args(dict(state="absent", bridge="test-br", _ansible_diff=True))
+        result = self.execute_module(
+            changed=True,
+            test_name="test_openvswitch_bridge_absent_removes_bridge_diff_mode",
+        )
+        self.assertIn("diff", result)
+        self.assertEqual(
+            result["diff"]["before"],
+            {
+                "bridge": "test-br",
+                "parent": "test-br",
+                "vlan": "0",
+                "fail_mode": "secure",
+                "external_ids": {"foo": "bar"},
+            },
+        )
+        self.assertEqual(
+            result["diff"]["after"],
+            {
+                "bridge": "test-br",
+                "parent": None,
+                "vlan": None,
+                "fail_mode": None,
+                "external_ids": None,
+                "set": None,
+            },
         )
