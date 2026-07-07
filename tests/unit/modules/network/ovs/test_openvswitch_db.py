@@ -86,6 +86,10 @@ test_name_side_effect_matrix = {
         (0, "openvswitch_db_disable_in_band_true.cfg", None),
         (0, None, None),
     ],
+    "test_openvswitch_db_get_hyphenated_key": [
+        (0, "openvswitch_db_external_ids.cfg", None),
+        (0, "openvswitch_db_read_quoted_value.cfg", None),
+    ],
     "test_openvswitch_db_absent_removes_key_check_mode": [
         (0, "openvswitch_db_disable_in_band_true.cfg", None),
     ],
@@ -296,7 +300,7 @@ class TestOpenVSwitchDBModule(TestOpenVSwitchModule):
             )
         )
         self.execute_module(
-            changed=True,
+            changed=False,
             commands=["/usr/bin/ovs-vsctl -t 5 get Bridge test-br other_config:disable-in-band"],
             test_name="test_openvswitch_db_get_with_key",
         )
@@ -312,7 +316,7 @@ class TestOpenVSwitchDBModule(TestOpenVSwitchModule):
             )
         )
         self.execute_module(
-            changed=True,
+            changed=False,
             commands=["/usr/bin/ovs-vsctl -t 5 get Bridge test-br other_config"],
             test_name="test_openvswitch_db_get_without_key",
         )
@@ -427,6 +431,28 @@ class TestOpenVSwitchDBModule(TestOpenVSwitchModule):
             },
         )
 
+    def test_openvswitch_db_get_hyphenated_key(self):
+        set_module_args(
+            dict(
+                state="read",
+                table="open_vswitch",
+                record=".",
+                col="external_ids",
+                key="ovn-chassis-mac-mappings",
+            )
+        )
+        result = self.execute_module(
+            changed=False,
+            commands=[
+                "/usr/bin/ovs-vsctl -t 5 get open_vswitch . external_ids:ovn-chassis-mac-mappings"
+            ],
+            test_name="test_openvswitch_db_get_hyphenated_key",
+        )
+        self.assertEqual(
+            result["output"],
+            {"ovn-chassis-mac-mappings": "physnet1:fa:16:3f:93:18:29"},
+        )
+
     def test_openvswitch_db_get_non_dict(self):
         set_module_args(
             dict(
@@ -438,7 +464,7 @@ class TestOpenVSwitchDBModule(TestOpenVSwitchModule):
             )
         )
         self.execute_module(
-            changed=True,
+            changed=False,
             commands=["/usr/bin/ovs-vsctl -t 5 get Bridge test-br name"],
             test_name="test_openvswitch_db_get_non_dict",
         )

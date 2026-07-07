@@ -295,20 +295,22 @@ def main():
         if not module.check_mode:
             for c in commands:
                 rc, out, err = module.run_command(c, check_rc=True)
-        result["changed"] = True
+        if module.params["state"] != "read":
+            result["changed"] = True
 
         if out is not None:
             string_to_dict = {}
+            out_str = str(out).strip()
 
-            if NON_EMPTY_MAP_RE.match(str(out)):
-                for kv in re.split(r", ", out[1:-1]):
+            if NON_EMPTY_MAP_RE.match(out_str):
+                for kv in re.split(r", ", out_str[1:-1]):
                     k, v = re.split(r"=", kv, 1)
-                    string_to_dict[re.search("\\w*", k).group(0)] = re.search("\\d*", v).group(0)
+                    string_to_dict[k.strip()] = v.strip().strip('"')
             else:
                 if module.params["key"] is not None:
-                    string_to_dict[module.params["key"]] = re.search("\\w*", str(out)).group(0)
+                    string_to_dict[module.params["key"]] = out_str.strip('"')
                 else:
-                    string_to_dict[module.params["col"]] = re.search("\\w*", str(out)).group(0)
+                    string_to_dict[module.params["col"]] = out_str.strip('"')
             result["output"] = string_to_dict
 
     module.exit_json(**result)
