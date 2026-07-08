@@ -110,6 +110,12 @@ test_name_side_effect_matrix = {
         (0, "", ""),
         (0, "", ""),
     ],
+    "test_openvswitch_bridge_present_runs_set_list_mode": [
+        (0, "", ""),
+        (0, "", ""),
+        (0, "", ""),
+        (0, "", ""),
+    ],
     "test_openvswitch_bridge_absent_removes_bridge_check_mode": [
         (0, "list_br_test_br.cfg", ""),
         (0, "br_to_parent_test_br.cfg", ""),
@@ -321,6 +327,28 @@ class TestOpenVSwitchBridgeModule(TestOpenVSwitchModule):
             changed=True,
             commands=commands,
             test_name="test_openvswitch_bridge_present_runs_set_mode",
+        )
+
+    def test_openvswitch_bridge_present_runs_set_list_mode(self):
+        set_module_args(
+            dict(
+                state="present",
+                bridge="test-br",
+                set=[
+                    "bridge test-br other-config:datapath-id=0000000000000001",
+                    "bridge test-br protocols=OpenFlow13",
+                ],
+            )
+        )
+        commands = [
+            "/usr/bin/ovs-vsctl -t 5 add-br test-br"
+            " -- set bridge test-br other-config:datapath-id=0000000000000001"
+            " -- set bridge test-br protocols=OpenFlow13",
+        ]
+        self.execute_module(
+            changed=True,
+            commands=commands,
+            test_name="test_openvswitch_bridge_present_runs_set_list_mode",
         )
 
     def test_openvswitch_bridge_absent_removes_bridge_check_mode(self):

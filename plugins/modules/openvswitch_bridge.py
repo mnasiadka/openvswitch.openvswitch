@@ -58,8 +58,9 @@ options:
   set:
     description:
     - Run set command after bridge configuration. This parameter is non-idempotent,
-      play will always return I(changed) state if present
-    type: str
+      play will always return I(changed) state if present. Accepts a string or a
+      list of strings to chain multiple set sub-commands.
+    type: raw
   database_socket:
     description:
     - Path/ip to datbase socket to use
@@ -94,6 +95,14 @@ EXAMPLES = """
     bridge: br0
     state: present
     database_socket: unix:/opt/second.sock
+
+# Create a bridge with multiple set sub-commands
+- openvswitch.openvswitch.openvswitch_bridge:
+    bridge: br-int
+    state: present
+    set:
+      - Bridge br-int other-config:datapath-id=0000000000000001
+      - Bridge br-int protocols=OpenFlow13
 """
 
 from ansible.module_utils._text import to_text
@@ -165,8 +174,12 @@ def map_obj_to_commands(want, have, module):
                 command += " " + templatized_command % module.params
 
             if want["set"]:
-                templatized_command = " -- set %(set)s"
-                command += templatized_command % module.params
+                set_value = want["set"]
+                if isinstance(set_value, list):
+                    for item in set_value:
+                        command += " -- set " + item
+                else:
+                    command += " -- set " + set_value
 
             commands.append(command)
 
@@ -247,7 +260,7 @@ def main():
         "timeout": {"default": 5, "type": "int"},
         "external_ids": {"default": None, "type": "dict"},
         "fail_mode": {"default": None},
-        "set": {"required": False, "default": None},
+        "set": {"required": False, "default": None, "type": "raw"},
         "database_socket": {"default": None},
     }
 
